@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <title>سامانه پنگول</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css" rel="stylesheet" type="text/css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Vazir', sans-serif;
+      background: linear-gradient(135deg, #ff9800, #f57c00);
+      direction: rtl;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .glass-box {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 30px;
+      width: 90%;
+      max-width: 500px;
+      text-align: center;
+    }
+    h1 { font-size: 2em; margin-bottom: 20px; }
+    button, label.upload {
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+      font-size: 1.1em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    button:hover, label.upload:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    input[type="file"] { display: none; }
+    .modal {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(25px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 16px;
+      padding: 30px;
+      width: 90%;
+      max-width: 400px;
+      display: none;
+      flex-direction: column;
+      color: white;
+      z-index: 10;
+    }
+    .modal input, .modal textarea {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      font-family: 'Vazir', sans-serif;
+    }
+    .modal button {
+      margin-top: 15px;
+    }
+    .overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      display: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glass-box">
+    <h1>سامانه پنگول</h1>
+    <button onclick="showModal('create')">➕ ایجاد صفحه جدید</button>
+    <button onclick="showModal('login')">🔐 ورود با رمز عبور</button>
+    <button onclick="showModal('delete')">🗑️ حذف صفحه با رمز یا XML</button>
+    <button onclick="showModal('download')">📥 دریافت فایل XML صفحه</button>
+    <input type="file" id="xmlUpload" accept=".xml" onchange="handleXMLUpload(event)">
+    <label for="xmlUpload" class="upload">📂 بارگذاری فایل XML</label>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="hideModal()"></div>
+  <div class="modal" id="modalBox">
+    <div id="modalContent"></div>
+  </div>
+
+  <script>
+    const overlay = document.getElementById('overlay');
+    const modalBox = document.getElementById('modalBox');
+    const modalContent = document.getElementById('modalContent');
+
+    function showModal(type) {
+      overlay.style.display = 'block';
+      modalBox.style.display = 'flex';
+
+      if (type === 'create') {
+        modalContent.innerHTML = `
+          <h3>ایجاد صفحه جدید</h3>
+          <input id="pageTitle" placeholder="عنوان صفحه">
+          <textarea id="pageHTML" placeholder="محتوای HTML" rows="4"></textarea>
+          <input id="pagePass" type="password" placeholder="رمز عبور">
+          <button onclick="createPage()">ایجاد</button>
+        `;
+      } else if (type === 'login') {
+        modalContent.innerHTML = `
+          <h3>ورود به صفحه</h3>
+          <input id="loginPass" placeholder="رمز عبور">
+          <button onclick="loginPage()">ورود</button>
+        `;
+      } else if (type === 'delete') {
+        modalContent.innerHTML = `
+          <h3>حذف صفحه</h3>
+          <input id="delTitle" placeholder="عنوان صفحه">
+          <input id="delPass" type="password" placeholder="رمز عبور">
+          <button onclick="deletePage()">حذف</button>
+        `;
+      } else if (type === 'download') {
+        modalContent.innerHTML = `
+          <h3>دریافت XML</h3>
+          <input id="dlPass" placeholder="رمز عبور">
+          <button onclick="downloadXML()">دریافت</button>
+        `;
+      }
+    }
+
+    function hideModal() {
+      overlay.style.display = 'none';
+      modalBox.style.display = 'none';
+    }
+
+    function createPage() {
+      const title = document.getElementById('pageTitle').value.trim();
+      const html = document.getElementById('pageHTML').value;
+      const pass = document.getElementById('pagePass').value;
+
+      if (!title || !html || !pass) return alert("همه فیلدها الزامی هستند.");
+
+      const pages = JSON.parse(localStorage.getItem('pages') || '{}');
+      pages[title] = { html, password: pass };
+      localStorage.setItem('pages', JSON.stringify(pages));
+      alert("صفحه ذخیره شد.");
+      hideModal();
+    }
+
+    function loginPage() {
+      const pass = document.getElementById('loginPass').value;
+      const pages = JSON.parse(localStorage.getItem('pages') || '{}');
+      const found = Object.entries(pages).find(([key, val]) => val.password === pass);
+      if (found) {
+        const win = window.open('', '_blank');
+        win.document.write(found[1].html);
+      } else {
+        alert("رمز اشتباه است.");
+      }
+    }
+
+    function deletePage() {
+      const title = document.getElementById('delTitle').value.trim();
+      const pass = document.getElementById('delPass').value;
+      const pages = JSON.parse(localStorage.getItem('pages') || '{}');
+      if (pages[title] && pages[title].password === pass) {
+        delete pages[title];
+        localStorage.setItem('pages', JSON.stringify(pages));
+        alert("صفحه حذف شد.");
+        hideModal();
+      } else {
+        alert("عنوان یا رمز اشتباه است.");
+      }
+    }
+
+    function downloadXML() {
+      const pass = document.getElementById('dlPass').value;
+      const pages = JSON.parse(localStorage.getItem('pages') || '{}');
+      const found = Object.entries(pages).find(([key, val]) => val.password === pass);
+      if (found) {
+        const xml = `<page><title>${found[0]}</title><html><![CDATA[${found[1].html}]]></html><password>${found[1].password}</password></page>`;
+        const blob = new Blob([xml], { type: 'application/xml' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${found[0]}.xml`;
+        link.click();
+        hideModal();
+      } else {
+        alert("رمز اشتباه است.");
+      }
+    }
+
+    function handleXMLUpload(event) {
+      const file = event.target.files[0];
+      if (!file)
